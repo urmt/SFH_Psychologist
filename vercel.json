@@ -1,8 +1,7 @@
 {
   "functions": {
-    "api/**/*.ts": {
-      "maxDuration": 30,
-      "includeFiles": "packages/**"
+    "api/chat.ts": {
+      "maxDuration": 30
     }
   }
 }
