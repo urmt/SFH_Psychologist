@@ -1,0 +1,17 @@
+{
+  "name": "@sfh/orchestrator",
+  "version": "1.0.0",
+  "description": "LLM provider orchestration for SFH Psychologist",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "echo 'Tests to be implemented'"
+  },
+  "dependencies": {
+    "@sfh/types": "*",
+    "@sfh/compliance-engine": "*"
+  },
+  "keywords": ["sfh", "orchestration", "llm"],
+  "author": "",
+  "license": "MIT"
+}

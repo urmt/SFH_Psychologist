@@ -45,3 +45,4 @@ Cargo.lock
 # Temporary files
 *.tmp
 .cache/
+.vercel

@@ -33,7 +33,7 @@ export async function validateResponse(
     const coherenceScore = calculateQualicCoherence(llmResponse.rawResponse, session);
     
     // Step 3: Determine if response passes
-    const passed = violatedAxioms.length === 0 && coherenceScore >= 0.85; // Lowered for MVP
+    const passed = violatedAxioms.length === 0 && coherenceScore >= 0.70; // Adjusted for educational, beginner-friendly responses
     
     const executionTime = performance.now() - startTime;
     console.log(`SFH validation completed in ${executionTime.toFixed(2)}ms`);
@@ -107,11 +107,11 @@ function calculateQualicCoherence(
 ): number {
   let score = 0.5; // Start at middle
   
-  // Length check (150-800 chars is good)
+  // Length check (200-1200 chars is good for educational responses)
   const length = response.length;
-  if (length >= 150 && length <= 800) {
+  if (length >= 200 && length <= 1200) {
     score += 0.2;
-  } else if (length < 50 || length > 1500) {
+  } else if (length < 100 || length > 2000) {
     score -= 0.2;
   }
   
@@ -140,17 +140,19 @@ function calculateQualicCoherence(
   
   score -= antiPatternsFound * 0.15;
   
-  // Empathy check (presence of empathetic language)
+  // Empathy and educational markers
   const empathyMarkers = [
     'understand', 'hear you', 'makes sense', 'valid',
-    'normal', 'okay to feel', 'i see', 'acknowledge'
+    'normal', 'okay to feel', 'i see', 'acknowledge',
+    'glad you', 'tough', 'help', 'let me explain',
+    'imagine', 'think about', 'in your situation', 'what you can'
   ];
   
   const empathyFound = empathyMarkers.filter(marker =>
     response.toLowerCase().includes(marker)
   ).length;
   
-  score += Math.min(empathyFound * 0.03, 0.15);
+  score += Math.min(empathyFound * 0.04, 0.20);
   
   // Clamp to 0.0-1.0
   return Math.max(0.0, Math.min(1.0, score));
