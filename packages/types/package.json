@@ -1,0 +1,13 @@
+{
+  "name": "@sfh/types",
+  "version": "1.0.0",
+  "description": "TypeScript interfaces for Sentient-Field Psychologist",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "echo 'Types package - no linting needed'"
+  },
+  "keywords": ["sfh", "typescript", "interfaces"],
+  "author": "",
+  "license": "MIT"
+}

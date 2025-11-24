@@ -1,0 +1,16 @@
+{
+  "name": "@sfh/compliance-engine",
+  "version": "1.0.0",
+  "description": "SFH validation and auto-repair system",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "echo 'Tests to be implemented'"
+  },
+  "dependencies": {
+    "@sfh/types": "*"
+  },
+  "keywords": ["sfh", "validation", "compliance"],
+  "author": "",
+  "license": "MIT"
+}

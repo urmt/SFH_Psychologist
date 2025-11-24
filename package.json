@@ -1,0 +1,26 @@
+{
+  "name": "sentient-field-psychologist",
+  "version": "1.0.0",
+  "description": "SFH-compliant AI psychologist for attachment theory and psychedelic integration",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "deploy:ipfs": "node tools/scripts/deploy-ipfs.js",
+    "deploy:vercel": "node tools/scripts/deploy-vercel.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "prettier": "^3.1.0",
+    "eslint": "^8.55.0"
+  },
+  "keywords": ["sfh", "psychology", "attachment-theory", "psychedelic-integration"],
+  "author": "",
+  "license": "MIT"
+}
