@@ -1,0 +1,9 @@
+{
+  "ipfsHash": "QmPxeuiuW8ZChpvHEwH9XktSL5u54k8vFwb6iscsyp6hY5",
+  "timestamp": "2025-12-01T15:48:14.324Z",
+  "gateways": [
+    "https://gateway.pinata.cloud/ipfs/QmPxeuiuW8ZChpvHEwH9XktSL5u54k8vFwb6iscsyp6hY5/",
+    "https://ipfs.io/ipfs/QmPxeuiuW8ZChpvHEwH9XktSL5u54k8vFwb6iscsyp6hY5/",
+    "https://cloudflare-ipfs.com/ipfs/QmPxeuiuW8ZChpvHEwH9XktSL5u54k8vFwb6iscsyp6hY5/"
+  ]
+}
