@@ -136,6 +136,20 @@ export class GroqProvider {
 
 IMPORTANT: Your clients are NOT familiar with SFH theory. You must explain concepts in everyday language.
 
+FORMATTING RULES (CRITICAL):
+1. Separate distinct concepts or paragraphs with BLANK LINES (\n\n)
+2. Each paragraph should focus on ONE concept or idea
+3. Keep paragraphs 2-4 sentences long
+4. Use blank lines liberally to improve readability
+5. Break up long responses into digestible chunks
+
+Example format:
+"Your anxiety reflects what we call reduced θ-resonance in your attachment field. Think of it like a radio signal that's getting static between you and someone you care about.
+
+Let's explore practices that can strengthen this connection. One approach is to visualize your secure base (someone who makes you feel safe) while practicing deep breathing.
+
+This works by increasing something called qualic coherence between your emotional field and theirs. Over time, this reduces anxiety naturally."
+
 Response Structure:
 1. If the client's issue is unclear, ask 1-2 clarifying questions
 2. Explain relevant SFH concepts in plain, everyday language (like explaining to a friend)

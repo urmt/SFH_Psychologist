@@ -20,15 +20,125 @@ if (result.error) {
 import express from 'express';
 import cors from 'cors';
 import { createOrchestratorFromEnv } from '../../../packages/orchestrator/src/index';
-import type { TherapeuticSession, RiskLevel, TopicTag } from '../../../packages/types/src/index';
+import type { TherapeuticSession, RiskLevel, TopicTag, ViolatedAxiom, LLMRequest } from '../../../packages/types/src/index';
+
+/**
+ * Classified paragraph for color-coded display
+ */
+interface ClassifiedParagraph {
+  text: string;
+  color: 'green' | 'yellow' | 'red' | 'neutral';
+  reasoning: string;
+}
+
+/**
+ * Multiple choice question structure
+ */
+interface MCQData {
+  question: string;
+  options: string[];
+  context: string;
+}
+
+/**
+ * Classify response paragraphs by urgency/type based on SFH axioms and risk
+ */
+function classifyParagraphs(
+  responseText: string,
+  riskLevel: RiskLevel,
+  violatedAxioms: ViolatedAxiom[]
+): ClassifiedParagraph[] {
+  // Split response into paragraphs (separated by double newlines)
+  const paragraphs = responseText.split('\n\n').filter(p => p.trim());
+  
+  return paragraphs.map(para => {
+    const lower = para.toLowerCase();
+    
+    // RED: Crisis, emergency, high-risk content ONLY
+    // Very conservative - only for true emergencies
+    if (
+      lower.includes('crisis') ||
+      lower.includes('emergency') ||
+      lower.includes('suicid') ||
+      lower.includes('988') ||
+      lower.includes('self-harm') ||
+      lower.includes('immediate danger') ||
+      (lower.includes('seek') && lower.includes('professional help')) ||
+      (lower.includes('contact') && (lower.includes('therapist') || lower.includes('emergency')))
+    ) {
+      return {
+        text: para,
+        color: 'red',
+        reasoning: 'Crisis/emergency content'
+      };
+    }
+    
+    // YELLOW: Explicit warnings and cautions ONLY
+    // Must have clear warning language
+    if (
+      lower.includes('caution') ||
+      lower.includes('be careful') ||
+      lower.includes('warning') ||
+      (lower.includes('important') && lower.includes('note')) ||
+      lower.includes('be aware that') ||
+      lower.includes('watch out for')
+    ) {
+      return {
+        text: para,
+        color: 'yellow',
+        reasoning: 'Explicit caution/warning'
+      };
+    }
+    
+    // GREEN: Clear actionable advice ONLY
+    // Must be direct suggestions/techniques
+    const hasActionVerb = 
+      lower.match(/\b(try|practice|do|use)\s+(this|these|the|a)\s+(technique|exercise|practice|approach)/) ||
+      lower.match(/\bhere's (how|what) (you can|to)/) ||
+      lower.match(/\byou can (try|practice|do)/) ||
+      lower.match(/\b(one|an?) (approach|technique|way|method) (is|would be)/);
+    
+    if (hasActionVerb) {
+      return {
+        text: para,
+        color: 'green',
+        reasoning: 'Actionable advice'
+      };
+    }
+    
+    // DEFAULT: No color (neutral/educational content)
+    return {
+      text: para,
+      color: 'neutral',
+      reasoning: 'Educational/explanatory content'
+    };
+  });
+}
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('/home/student/SFH_Psychologist/apps/simple-chat/public'));
+
+// Serve static files FIRST
+// Handle both direct run and workspace run
+let publicPath: string;
+if (process.cwd().endsWith('simple-chat')) {
+  // Direct run from apps/simple-chat
+  publicPath = path.join(process.cwd(), 'public');
+} else {
+  // Workspace run from project root
+  publicPath = path.join(process.cwd(), 'apps/simple-chat/public');
+}
+console.log('Serving static files from:', publicPath);
+app.use(express.static(publicPath));
+
+// Fallback: serve index.html for root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(publicPath, 'index.html'));
+});
 
 // Initialize orchestrator
 console.log('Initializing LLM orchestrator...');
@@ -115,6 +225,76 @@ function determineRiskLevel(tags: TopicTag[]): RiskLevel {
 }
 
 /**
+ * Generate MCQ for clarification based on conversation context
+ * Uses LLM to create context-aware multiple choice questions
+ */
+async function generateMCQ(
+  session: TherapeuticSession,
+  messageCount: number
+): Promise<MCQData | null> {
+  // Generate MCQ every 3-4 messages, but not on first message
+  if (messageCount < 2 || messageCount % 3 !== 0) {
+    return null;
+  }
+  
+  // Build context from recent messages
+  const recentMessages = session.messages.slice(-4);
+  const context = recentMessages
+    .map(m => `${m.role === 'client' ? 'Client' : 'Therapist'}: ${m.content}`)
+    .join('\n\n');
+  
+  // Request MCQ from LLM
+  const mcqPrompt = `Based on this therapeutic conversation, generate ONE multiple choice question to clarify the client's situation or feelings. The question should help deepen understanding.
+
+Recent conversation:
+${context}
+
+Generate a JSON response with this exact structure:
+{
+  "question": "[Your clarifying question]",
+  "options": ["Option A", "Option B", "Option C", "Option D"]
+}
+
+Make the question specific, empathetic, and relevant to what was just discussed. Keep options concise (5-10 words each).`;
+  
+  try {
+    const request: LLMRequest = {
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert psychologist creating clarifying questions. Return ONLY valid JSON, no other text.'
+        },
+        {
+          role: 'user',
+          content: mcqPrompt
+        }
+      ],
+      temperature: 0.7,
+      maxTokens: 200
+    };
+    
+    const response = await orchestrator.sendRequest('groq', request);
+    
+    // Parse JSON response
+    const cleaned = response.rawResponse.trim().replace(/```json\n?/g, '').replace(/```/g, '');
+    const mcqData = JSON.parse(cleaned);
+    
+    if (mcqData.question && Array.isArray(mcqData.options) && mcqData.options.length >= 3) {
+      return {
+        question: mcqData.question,
+        options: mcqData.options,
+        context: context
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('MCQ generation failed:', error);
+    return null;
+  }
+}
+
+/**
  * POST /api/chat - Main chat endpoint
  */
 app.post('/api/chat', async (req, res) => {
@@ -168,9 +348,21 @@ app.post('/api/chat', async (req, res) => {
     console.log(`Response generated: ${result.passed ? '✓ PASSED' : '✗ FAILED'}`);
     console.log(`Coherence: ${result.validation.qualicCoherenceScore.toFixed(3)}`);
     
+    // Classify paragraphs for color-coded display
+    const classifiedParagraphs = classifyParagraphs(
+      result.response.rawResponse,
+      session.riskLevel,
+      result.validation.violatedAxioms
+    );
+    
+    // Generate MCQ if appropriate
+    const mcq = await generateMCQ(session, session.messages.length);
+    
     // Return response
     res.json({
       response: result.response.rawResponse,
+      classifiedParagraphs,
+      mcq: mcq,
       validation: {
         passed: result.validation.passed,
         qualicCoherenceScore: result.validation.qualicCoherenceScore,
@@ -218,6 +410,88 @@ app.get('/api/session/:sessionId', (req, res) => {
 });
 
 /**
+ * POST /api/export-summary - Generate session summary for PDF export
+ */
+app.post('/api/export-summary', async (req, res) => {
+  try {
+    const { sessionId, messages, coherenceScores } = req.body;
+    
+    if (!messages || messages.length === 0) {
+      return res.status(400).json({ error: 'No messages to summarize' });
+    }
+    
+    console.log(`\nGenerating summary for session ${sessionId}...`);
+    
+    // Build conversation context
+    const conversationText = messages
+      .map((msg: any) => `${msg.role === 'client' ? 'Client' : 'Therapist'}: ${msg.content}`)
+      .join('\n\n');
+    
+    // Calculate average coherence
+    const avgCoherence = coherenceScores.length > 0
+      ? coherenceScores.reduce((a: number, b: number) => a + b, 0) / coherenceScores.length
+      : 0;
+    
+    // Generate summary using LLM
+    const summaryPrompt = `You are an expert psychologist. Summarize this therapeutic session in 3-4 paragraphs. Focus on:
+1. Main themes and concerns discussed
+2. Client's emotional state and attachment patterns (if relevant)
+3. Progress and insights gained
+4. Overall session quality (avg coherence: ${avgCoherence.toFixed(3)})
+
+Session transcript:
+${conversationText}
+
+Provide a professional, compassionate summary.`;
+    
+    const recommendationsPrompt = `Based on this therapeutic session, provide 4-6 specific, actionable recommendations for the client's continued growth. Use SFH and attachment theory principles.
+
+Session transcript:
+${conversationText}
+
+Format as a numbered list. Be specific and practical.`;
+    
+    const summaryRequest: LLMRequest = {
+      messages: [
+        { role: 'system', content: 'You are an expert psychologist writing session summaries.' },
+        { role: 'user', content: summaryPrompt }
+      ],
+      temperature: 0.7,
+      maxTokens: 500
+    };
+    
+    const recommendationsRequest: LLMRequest = {
+      messages: [
+        { role: 'system', content: 'You are an expert psychologist providing therapeutic recommendations.' },
+        { role: 'user', content: recommendationsPrompt }
+      ],
+      temperature: 0.7,
+      maxTokens: 400
+    };
+    
+    // Generate both in parallel
+    const [summaryResponse, recResponse] = await Promise.all([
+      orchestrator.sendRequest('groq', summaryRequest),
+      orchestrator.sendRequest('groq', recommendationsRequest)
+    ]);
+    
+    console.log('Summary generated successfully');
+    
+    res.json({
+      summary: summaryResponse.rawResponse,
+      recommendations: recResponse.rawResponse
+    });
+    
+  } catch (error) {
+    console.error('Export summary error:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate summary',
+      message: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+/**
  * GET /api/health - Health check
  */
 app.get('/api/health', (req, res) => {
@@ -227,13 +501,6 @@ app.get('/api/health', (req, res) => {
     sessions: sessions.size,
     uptime: process.uptime(),
   });
-});
-
-/**
- * Serve frontend for root and catch-all
- */
-app.get('/', (req, res) => {
-  res.sendFile('/home/student/SFH_Psychologist/apps/simple-chat/public/index.html');
 });
 
 /**

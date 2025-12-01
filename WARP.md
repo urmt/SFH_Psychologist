@@ -8,12 +8,15 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 **Current Status**: Phase 3 Complete - Chat Interface Live!
 - ✅ TypeScript interfaces complete (`@sfh/types`)
-- ✅ SFH Compliance Engine working with 7/37 axioms
-- ✅ Auto-repair template system (6 templates, expandable to 400+)
+- ✅ SFH Compliance Engine expanded to 37 axioms with repair templates
 - ✅ LLM Orchestrator with Groq & Grok providers
-- ✅ Full integration testing suite
 - ✅ Web chat interface with real-time coherence display
 - ✅ Express API server with session management
+- ✅ Conservative color-coded paragraphs (mostly neutral)
+- ✅ Risk level badge and topic tags
+- ✅ NEW: Text-to-Speech (browser + ElevenLabs fallback)
+- ✅ NEW: Dynamic Multiple-Choice Questions (context-aware)
+- ✅ NEW: PDF export with AI summary & recommendations
 
 ## Development Commands
 
@@ -33,11 +36,11 @@ npm run build --workspace=packages/sfh-compliance-engine
 
 ### Development
 ```bash
-# Run development server (web app - when implemented)
-npm run dev
+# Run chat server (simple chat app)
+npm run chat
 
-# Run dev in specific workspace
-npm run dev --workspace=apps/web
+# Run dev in specific workspace (simple chat)
+npm run dev --workspace=apps/simple-chat
 ```
 
 ### Testing
@@ -65,7 +68,14 @@ npm run deploy:ipfs
 
 # Deploy to Vercel
 npm run deploy:vercel
+
+# Push to GitHub
+# (Ask user before pushing when project is ≥80% and running)
 ```
+
+### Feature Docs
+- `FEATURE_GUIDE.md` - TTS, MCQ, PDF details
+- `QUICK_START.md` - 5-minute test flow
 
 ## Architecture
 
