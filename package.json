@@ -40,6 +40,6 @@
     "@types/express": "^5.0.5",
     "@vercel/node": "^5.5.9",
     "cors": "^2.8.5",
-    "express": "^5.1.0"
+    "express": "^5.2.0"
   }
 }
